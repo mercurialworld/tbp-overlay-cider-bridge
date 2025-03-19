@@ -1,0 +1,16 @@
+{
+  "name": "tbp-overlay-cider-bridge",
+  "module": "src/main.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "prettier": "^3.5.3",
+    "socket.io-client": "^4.8.1",
+    "ws": "^8.18.1"
+  }
+}
