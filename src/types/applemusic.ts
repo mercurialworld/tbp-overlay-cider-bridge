@@ -4,6 +4,7 @@ export type AudioVariant =
     | "hi-res-lossless"
     | "lossless"
     | "lossy-stereo";
+
 export type ContentRating = "clean" | "explicit";
 
 /**
