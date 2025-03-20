@@ -121,7 +121,7 @@ parrotSocket.on("connection", async (socket, req) => {
     }
 
     socket.on("close", function () {
-        console.log(`${socket} disconnected`);
+        console.log("Overlay disconnected");
         socketClients.splice(socketClients.indexOf(socket), 1);
     });
 });
