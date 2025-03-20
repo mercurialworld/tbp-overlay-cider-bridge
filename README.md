@@ -24,6 +24,5 @@ bun run src/main.ts
 ## Known issues
 
 - Song metadata isn't set/sent on successful Cider/overlay socket connection
-- Song player state might not be sent correctly
 - There might be a problem with song metadata being behind by a song
     - I'm running on 3 hours of sleep so this might be my bad
