@@ -85,3 +85,12 @@ export type CiderPlayerStatus =
     | RepeatModeDidChange
     | ShuffleModeDidChange
     | VolumeDidChange;
+
+export interface CiderAPIError {
+    error: string;
+}
+
+export interface CiderAPIResponse {
+    status: string;
+    info: PlaybackSongsAttributes;
+}

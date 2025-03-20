@@ -2,7 +2,7 @@ export const Config = {
     // Cider websocket/API
     cider_url: "http://127.0.0.1", // MUST have protocol (socket.io)
     cider_port: 10767,
-    cider_app_token: "get it yourself via cider settings",
+    cider_app_token: "nq1y1291jcnspri8i4d32z4l",
 
     // Parrot's overlay
     parrot_url: "127.0.0.1", // MUST NOT have protocol (websocket)

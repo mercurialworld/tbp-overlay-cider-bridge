@@ -1,6 +1,8 @@
 import { io } from "socket.io-client";
 import { WebSocketServer } from "ws";
 import {
+    CiderAPIError,
+    CiderAPIResponse,
     CiderPlaybackStatus,
     CiderPlayerStatus,
     PlaybackPlayingData,
@@ -50,7 +52,10 @@ class SocketDataHandler {
     }
 
     async updateTrackData(data: PlaybackSongsAttributes) {
-        var image = await this.getAlbumArtRaw(data.artwork.url);
+        var image;
+        if ("artwork" in data) {
+            image = await this.getAlbumArtRaw(data.artwork.url);
+        }
         var albumData: ParrotAlbum = {
             name: data.albumName,
         };
@@ -75,7 +80,7 @@ class SocketDataHandler {
     updateStateData(data: PlaybackPlayingData | PlaybackStoppedData) {
         var playbackTime = data.attributes?.currentPlaybackTime | 0;
         this.isPlaying =
-            data.state == "paused" || data.state == "stopped" ? false : true;
+            data.state === "paused" || data.state === "stopped" ? false : true;
 
         this.stateData = {
             playing: this.isPlaying,
@@ -111,7 +116,9 @@ parrotSocket.on("connection", async (socket, req) => {
     socketClients.push(socket);
 
     // TODO: send track data on connection
-    // socket.send();
+    if (socketData.trackData !== null) {
+        socket.send(socketData.sendTrackData());
+    }
 
     socket.on("close", function () {
         console.log(`${socket} disconnected`);
@@ -125,10 +132,25 @@ ciderSocket.on("connect", async () => {
     console.log("Connected to Cider!");
 
     // TODO: set trackdata to result of this
-    const res = await fetch(CIDER_API_URL, {
-        method: "POST",
+    const songPlayingOnConnection = await fetch(CIDER_API_URL, {
+        method: "GET",
         headers: { apptoken: Config.cider_app_token },
-    });
+    }).then((res) => res.text());
+
+    console.log(songPlayingOnConnection);
+
+    if (typeof songPlayingOnConnection === "string") {
+        const theSong: CiderAPIResponse | CiderAPIError = JSON.parse(
+            songPlayingOnConnection,
+        );
+
+        if ("info" in theSong) {
+            socketData.updateTrackData(theSong.info);
+            socketClients.forEach((socket) => {
+                socket.send(socketData.sendTrackData());
+            });
+        }
+    }
 });
 
 ciderSocket.on(
@@ -157,7 +179,7 @@ ciderSocket.on(
                     socket.send(socketData.sendStateData());
                 });
 
-                if (res.data.attributes && res.data.state == "playing") {
+                if (res.data.attributes && res.data.state === "playing") {
                     console.log(`setting data for ${res.data.attributes.name}`);
 
                     socketData.updateTrackData(res.data.attributes);
