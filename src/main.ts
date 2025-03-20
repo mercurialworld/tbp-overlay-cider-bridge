@@ -68,7 +68,7 @@ class SocketDataHandler {
         }
 
         this.trackData = {
-            id: data.url,
+            id: data.playParams.id,
             title: data.name,
             artists: [data.artistName],
             duration: data.durationInMillis,
@@ -137,7 +137,7 @@ ciderSocket.on("connect", async () => {
         headers: { apptoken: Config.cider_app_token },
     }).then((res) => res.text());
 
-    console.log(songPlayingOnConnection);
+    // console.log(songPlayingOnConnection);
 
     if (typeof songPlayingOnConnection === "string") {
         const theSong: CiderAPIResponse | CiderAPIError = JSON.parse(
@@ -145,6 +145,7 @@ ciderSocket.on("connect", async () => {
         );
 
         if ("info" in theSong) {
+            console.log(`Setting song to ${theSong.info.name} via Cider connection`);
             socketData.updateTrackData(theSong.info);
             socketClients.forEach((socket) => {
                 socket.send(socketData.sendTrackData());
