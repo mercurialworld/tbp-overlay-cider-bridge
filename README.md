@@ -4,8 +4,6 @@ A TypeScript wrapper for [Cider 2.0's](https://cider.sh) Websocket/API, meant fo
 
 TypeScript is chosen because JavaScript scares me.
 
-This also doubles as probably the most comprehensive documentation for Cider's Websocket (see `src/applemusic.ts` and `src/cider.ts`).
-
 ## Setup
 
 Due to sheer laziness, all configuration is done in `src/config.ts`.
