@@ -3,7 +3,8 @@ import { SongsAttributes } from "./applemusic";
 // TODO: tagged unions
 // https://mariusschulz.com/blog/tagged-union-types-in-typescript
 
-export type PlayerPlayingState = "playing" | "seeking" | "paused";
+export type PlayerPlayingState = "playing" | "seeking";
+export type PlayerPausedState = "paused";
 export type PlayerStoppedState = "stopped";
 
 export enum RepeatMode {
@@ -17,8 +18,15 @@ export interface PlaybackSongsAttributes extends SongsAttributes {
     remainingTime: any; // TODO timedelta
 }
 
+export interface PlaybackTimeChangeData {
+    currentPlaybackDuration: number;
+    currentPlaybackTime: number;
+    currentPlaybackTimeRemaining: number;
+    isPlaying: boolean;
+}
+
 export interface PlaybackPlayingData {
-    state: PlayerPlayingState;
+    state: PlayerPlayingState | PlayerPausedState;
     attributes: PlaybackSongsAttributes;
 }
 
@@ -49,12 +57,7 @@ export interface PlaybackStateDidChange {
 
 export interface PlaybackTimeDidChange {
     type: "playbackStatus.playbackTimeDidChange";
-    data: {
-        currentPlaybackDuration: number;
-        currentPlaybackTime: number;
-        currentPlaybackTimeRemaining: number;
-        isPlaying: boolean;
-    };
+    data: PlaybackTimeChangeData;
 }
 
 export interface RepeatModeDidChange {
