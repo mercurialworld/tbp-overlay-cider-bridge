@@ -4,7 +4,6 @@ import {
     CiderAPIError,
     CiderAPIResponse,
     CiderPlaybackStatus,
-    CiderPlayerStatus,
     PlaybackPlayingData,
     PlaybackSongsAttributes,
     PlaybackStoppedData,
@@ -154,56 +153,53 @@ ciderSocket.on("connect", async () => {
     }
 });
 
-ciderSocket.on(
-    "API:Playback",
-    async (res: CiderPlaybackStatus | CiderPlayerStatus) => {
-        switch (res.type) {
-            // new song
-            case "playbackStatus.nowPlayingItemDidChange":
-                console.log(
-                    `playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
-                );
+ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
+    switch (res.type) {
+        // new song
+        case "playbackStatus.nowPlayingItemDidChange":
+            console.log(
+                `playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
+            );
 
-                socketData.updateTrackData(res.data);
-                socketClients.forEach((socket) => {
-                    socket.send(socketData.sendTrackData());
-                });
+            socketData.updateTrackData(res.data);
+            socketClients.forEach((socket) => {
+                socket.send(socketData.sendTrackData());
+            });
 
-                break;
+            break;
 
-            // playing/paused
-            case "playbackStatus.playbackStateDidChange":
-                console.log(`playback state is ${res.data.state}`);
+        // playing/paused
+        case "playbackStatus.playbackStateDidChange":
+            console.log(`playback state is ${res.data.state}`);
 
-                socketData.updateStateData(res.data);
-                socketClients.forEach((socket) => {
-                    socket.send(socketData.sendStateData());
-                });
+            socketData.updateStateData(res.data);
+            socketClients.forEach((socket) => {
+                socket.send(socketData.sendStateData());
+            });
 
-                if (res.data.attributes && res.data.state === "playing") {
-                    console.log(`setting data for ${res.data.attributes.name}`);
+            if (res.data.attributes && res.data.state === "playing") {
+                console.log(`setting data for ${res.data.attributes.name}`);
 
-                    socketData.updateTrackData(res.data.attributes);
-                    socketClients.forEach((socket) => {
-                        socket.send(socketData.sendStateData());
-                    });
-                }
-
-                break;
-            // playback time
-            case "playbackStatus.playbackTimeDidChange":
-                // console.log(`${res.data.currentPlaybackTime}`);
-
-                socketData.updatePlaybackTime(res.data);
+                socketData.updateTrackData(res.data.attributes);
                 socketClients.forEach((socket) => {
                     socket.send(socketData.sendStateData());
                 });
+            }
 
-                break;
-            // literally anything else
-            default:
-                console.log(`state is ${res.type}, ignoring`);
-                break;
-        }
-    },
-);
+            break;
+        // playback time
+        case "playbackStatus.playbackTimeDidChange":
+            // console.log(`${res.data.currentPlaybackTime}`);
+
+            socketData.updatePlaybackTime(res.data);
+            socketClients.forEach((socket) => {
+                socket.send(socketData.sendStateData());
+            });
+
+            break;
+        // literally anything else
+        default:
+            console.log(`state is ${res.type}, ignoring`);
+            break;
+    }
+});
