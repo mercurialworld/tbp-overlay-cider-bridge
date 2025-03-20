@@ -29,7 +29,7 @@ class SocketDataHandler {
     }
 
     async getAlbumArtRaw(imageUrl: string): Promise<ParrotAlbumArt> {
-        console.log("obtained image");
+        console.log("Obtained image");
 
         // requires bun
         const res = await fetch(imageUrl, { method: "GET" })
@@ -51,6 +51,14 @@ class SocketDataHandler {
     }
 
     async updateTrackData(data: PlaybackSongsAttributes) {
+        if (
+            data.name === this.trackData?.title &&
+            data.artistName === this.trackData.artists[0]
+        ) {
+            console.log("The song metadata hasn't changed, returning");
+            return;
+        }
+
         var image;
         if ("artwork" in data) {
             image = await this.getAlbumArtRaw(data.artwork.url);
@@ -116,6 +124,9 @@ parrotSocket.on("connection", async (socket, req) => {
 
     // TODO: send track data on connection
     if (socketData.trackData !== null) {
+        console.log(
+            `Sending song ${socketData.trackData.title} via overlay connection`,
+        );
         socket.send(socketData.sendTrackData());
     }
 
@@ -145,7 +156,7 @@ ciderSocket.on("connect", async () => {
 
         if ("info" in theSong) {
             console.log(`Setting song to ${theSong.info.name} via Cider connection`);
-            socketData.updateTrackData(theSong.info);
+            await socketData.updateTrackData(theSong.info);
             socketClients.forEach((socket) => {
                 socket.send(socketData.sendTrackData());
             });
@@ -158,10 +169,10 @@ ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
         // new song
         case "playbackStatus.nowPlayingItemDidChange":
             console.log(
-                `playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
+                `Playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
             );
 
-            socketData.updateTrackData(res.data);
+            await socketData.updateTrackData(res.data);
             socketClients.forEach((socket) => {
                 socket.send(socketData.sendTrackData());
             });
@@ -170,21 +181,12 @@ ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
 
         // playing/paused
         case "playbackStatus.playbackStateDidChange":
-            console.log(`playback state is ${res.data.state}`);
+            console.log(`Playback state is ${res.data.state}`);
 
             socketData.updateStateData(res.data);
             socketClients.forEach((socket) => {
                 socket.send(socketData.sendStateData());
             });
-
-            if (res.data.attributes && res.data.state === "playing") {
-                console.log(`setting data for ${res.data.attributes.name}`);
-
-                socketData.updateTrackData(res.data.attributes);
-                socketClients.forEach((socket) => {
-                    socket.send(socketData.sendStateData());
-                });
-            }
 
             break;
         // playback time
@@ -199,7 +201,7 @@ ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
             break;
         // literally anything else
         default:
-            console.log(`state is ${res.type}, ignoring`);
+            console.log(`State is ${res.type}, ignoring`);
             break;
     }
 });
