@@ -4,13 +4,13 @@ export interface ParrotStateData {
 }
 
 export interface ParrotAlbum {
-    name?: string;
-    year?: number;
+    name?: string | null;
+    year?: number | null;
 }
 
 export interface ParrotAlbumArt {
-    type?: string;
-    data?: string; // in base64
+    type?: string | null;
+    data?: string | null; // in base64
 }
 
 export interface ParrotTrackData {
@@ -18,7 +18,7 @@ export interface ParrotTrackData {
     title: string;
     artists: string[];
     duration: number; // millis
-    album?: ParrotAlbum;
-    art?: ParrotAlbumArt;
-    isrc?: string;
+    album?: ParrotAlbum | null;
+    art?: ParrotAlbumArt | null;
+    isrc?: string | null;
 }

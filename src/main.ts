@@ -60,11 +60,12 @@ class SocketDataHandler {
         }
 
         var image;
-        if ("artwork" in data) {
+        if ("artwork" in data && data.artwork.url) {
             image = await this.getAlbumArtRaw(data.artwork.url);
         }
         var albumData: ParrotAlbum = {
             name: data.albumName,
+            year: null,
         };
 
         if (data.releaseDate) {
@@ -81,6 +82,7 @@ class SocketDataHandler {
             duration: data.durationInMillis,
             album: albumData,
             art: image,
+            isrc: data.isrc ? data.isrc.substring(data.isrc.length - 12) : null,
         };
     }
 
@@ -122,7 +124,6 @@ parrotSocket.on("connection", async (socket, req) => {
     console.log("Connected to TheBlackParrot's overlay suite!");
     socketClients.push(socket);
 
-    // TODO: send track data on connection
     if (socketData.trackData !== null) {
         console.log(
             `Sending song ${socketData.trackData.title} via overlay connection`,
@@ -141,26 +142,20 @@ const ciderSocket = io(CIDER_SOCKET_URL);
 ciderSocket.on("connect", async () => {
     console.log("Connected to Cider!");
 
-    // TODO: set trackdata to result of this
     const songPlayingOnConnection = await fetch(CIDER_API_URL, {
         method: "GET",
         headers: { apptoken: Config.cider_app_token },
-    }).then((res) => res.text());
+    });
 
-    // console.log(songPlayingOnConnection);
+    if (songPlayingOnConnection.ok) {
+        var txt = await songPlayingOnConnection.text();
+        const theSong: CiderAPIResponse = JSON.parse(txt);
 
-    if (typeof songPlayingOnConnection === "string") {
-        const theSong: CiderAPIResponse | CiderAPIError = JSON.parse(
-            songPlayingOnConnection,
-        );
-
-        if ("info" in theSong) {
-            console.log(`Setting song to ${theSong.info.name} via Cider connection`);
-            await socketData.updateTrackData(theSong.info);
-            socketClients.forEach((socket) => {
-                socket.send(socketData.sendTrackData());
-            });
-        }
+        console.log(`Setting song to ${theSong.info.name} via Cider connection`);
+        await socketData.updateTrackData(theSong.info);
+        socketClients.forEach((socket) => {
+            socket.send(socketData.sendTrackData());
+        });
     }
 });
 
@@ -191,8 +186,6 @@ ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
             break;
         // playback time
         case "playbackStatus.playbackTimeDidChange":
-            // console.log(`${res.data.currentPlaybackTime}`);
-
             socketData.updatePlaybackTime(res.data);
             socketClients.forEach((socket) => {
                 socket.send(socketData.sendStateData());
