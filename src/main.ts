@@ -1,4 +1,4 @@
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import { WebSocketServer } from "ws";
 import {
     CiderAPIResponse,
@@ -14,14 +14,6 @@ import {
     ParrotStateData,
     ParrotTrackData,
 } from "./types/parrot";
-
-const configPath = Bun.file("./config.json");
-const Config = await configPath.json();
-
-console.log("Config loaded!");
-
-export const CIDER_SOCKET_URL = `${Config.ciderURL}:${Config.ciderPort}`;
-export const CIDER_API_URL = `${Config.ciderURL}:${Config.ciderPort}/api/v1/playback/now-playing`;
 
 class SocketDataHandler {
     trackData: ParrotTrackData | null;
@@ -118,89 +110,138 @@ class SocketDataHandler {
         return JSON.stringify({ event: "track", data: this.trackData });
     }
 }
-const socketData = new SocketDataHandler();
 
-const parrotSocket = new WebSocketServer({
-    host: Config.parrotURL,
-    port: Config.parrotPort,
-});
-const socketClients: any[] = [];
+class OverlayWS {
+    parrotServer: WebSocketServer | null;
+    socketData: SocketDataHandler;
+    socketClients: any[];
 
-parrotSocket.on("connection", async (socket, req) => {
-    console.log("Connected to TheBlackParrot's overlay suite!");
-    socketClients.push(socket);
+    constructor(host: string, port: number, socketData: SocketDataHandler) {
+        this.parrotServer = new WebSocketServer({
+            host,
+            port,
+        });
+        this.socketData = socketData;
+        this.socketClients = [];
 
-    if (socketData.trackData !== null) {
-        console.log(
-            `Sending song ${socketData.trackData.title} via overlay connection`,
-        );
-        socket.send(socketData.sendTrackData());
-    }
+        this.parrotServer.on("connection", async (socket, _) => {
+            console.log("Connected to TheBlackParrot's overlay suite!");
+            this.socketClients.push(socket);
 
-    socket.on("close", function () {
-        console.log("Overlay disconnected");
-        socketClients.splice(socketClients.indexOf(socket), 1);
-    });
-});
+            if (socketData.trackData !== null) {
+                console.log(
+                    `Sending song ${socketData.trackData.title} via overlay connection`,
+                );
+                socket.send(socketData.sendTrackData());
+            }
 
-const ciderSocket = io(CIDER_SOCKET_URL);
-
-ciderSocket.on("connect", async () => {
-    console.log("Connected to Cider!");
-
-    const songPlayingOnConnection = await fetch(CIDER_API_URL, {
-        method: "GET",
-        headers: { apptoken: Config.ciderAppToken },
-    });
-
-    if (songPlayingOnConnection.ok) {
-        var txt = await songPlayingOnConnection.text();
-        const theSong: CiderAPIResponse = JSON.parse(txt);
-
-        console.log(`Setting song to ${theSong.info.name} via Cider connection`);
-        await socketData.updateTrackData(theSong.info);
-        socketClients.forEach((socket) => {
-            socket.send(socketData.sendTrackData());
+            socket.on("close", () => {
+                console.log("Overlay disconnected");
+                this.socketClients.splice(this.socketClients.indexOf(socket), 1);
+            });
         });
     }
-});
+}
 
-ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
-    switch (res.type) {
-        // new song
-        case "playbackStatus.nowPlayingItemDidChange":
-            console.log(
-                `Playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
-            );
+class CiderSocket {
+    ciderSocket: Socket | null;
+    overlayWS: OverlayWS;
+    socketData: SocketDataHandler;
 
-            await socketData.updateTrackData(res.data);
-            socketClients.forEach((socket) => {
-                socket.send(socketData.sendTrackData());
+    constructor(
+        socketURL: string,
+        apiURL: string,
+        appToken: string,
+        overlayWS: OverlayWS,
+        socketData: SocketDataHandler,
+    ) {
+        this.ciderSocket = io(socketURL);
+        this.overlayWS = overlayWS;
+        this.socketData = socketData;
+
+        this.ciderSocket.on("connect", async () => {
+            console.log("Connected to Cider!");
+
+            const songPlayingOnConnection = await fetch(apiURL, {
+                method: "GET",
+                headers: { apptoken: appToken },
             });
 
-            break;
+            if (songPlayingOnConnection.ok) {
+                var txt = await songPlayingOnConnection.text();
+                const theSong: CiderAPIResponse = JSON.parse(txt);
 
-        // playing/paused
-        case "playbackStatus.playbackStateDidChange":
-            console.log(`Playback state is ${res.data.state}`);
+                console.log(
+                    `Setting song to ${theSong.info.name} via Cider connection`,
+                );
+                await socketData.updateTrackData(theSong.info);
+                this.sendToSockets(this.socketData.sendTrackData());
+            }
+        });
 
-            socketData.updateStateData(res.data);
-            socketClients.forEach((socket) => {
-                socket.send(socketData.sendStateData());
-            });
+        this.ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
+            switch (res.type) {
+                // new song
+                case "playbackStatus.nowPlayingItemDidChange":
+                    console.log(
+                        `Playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
+                    );
 
-            break;
-        // playback time
-        case "playbackStatus.playbackTimeDidChange":
-            socketData.updatePlaybackTime(res.data);
-            socketClients.forEach((socket) => {
-                socket.send(socketData.sendStateData());
-            });
+                    await this.socketData.updateTrackData(res.data);
+                    this.sendToSockets(this.socketData.sendTrackData());
 
-            break;
-        // literally anything else
-        default:
-            console.log(`State is ${res.type}, ignoring`);
-            break;
+                    break;
+
+                // playing/paused
+                case "playbackStatus.playbackStateDidChange":
+                    console.log(`Playback state is ${res.data.state}`);
+
+                    this.socketData.updateStateData(res.data);
+                    this.sendToSockets(this.socketData.sendStateData());
+
+                    break;
+                // playback time
+                case "playbackStatus.playbackTimeDidChange":
+                    socketData.updatePlaybackTime(res.data);
+                    this.sendToSockets(this.socketData.sendStateData());
+
+                    break;
+                // literally anything else
+                default:
+                    console.log(`State is ${res.type}, ignoring`);
+                    break;
+            }
+        });
     }
-});
+
+    sendToSockets(data: string) {
+        this.overlayWS.socketClients.forEach((socket) => {
+            socket.send(data);
+        });
+    }
+}
+
+async function main() {
+    const configPath = Bun.file("./config.json");
+    const Config = await configPath.json();
+
+    console.log("Config loaded!");
+    const CIDER_SOCKET_URL = `${Config.ciderURL}:${Config.ciderPort}`;
+    const CIDER_API_URL = `${Config.ciderURL}:${Config.ciderPort}/api/v1/playback/now-playing`;
+
+    const socketData = new SocketDataHandler();
+    const parrotSocketServer = new OverlayWS(
+        Config.parrotURL,
+        Config.parrotPort,
+        socketData,
+    );
+    const ciderSocket = new CiderSocket(
+        CIDER_SOCKET_URL,
+        CIDER_API_URL,
+        Config.ciderAppToken,
+        parrotSocketServer,
+        socketData,
+    );
+}
+
+main();
