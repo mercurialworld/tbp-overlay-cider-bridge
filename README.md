@@ -6,7 +6,11 @@ TypeScript is chosen because JavaScript scares me.
 
 ## Setup
 
-Due to sheer laziness, all configuration is done in `src/config.ts`.
+Download the latest release from the releases page, and extract everything into its own folder. Make sure you rename `config.sample.json` to `config.json` and configure your Cider/overlay websocket things there.
+
+Then, run the `tbpciderbridge` executable.
+
+## Development
 
 This project was created using `bun init` in bun v1.0.6. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
 

@@ -1,7 +1,6 @@
 import { io } from "socket.io-client";
 import { WebSocketServer } from "ws";
 import {
-    CiderAPIError,
     CiderAPIResponse,
     CiderPlaybackStatus,
     PlaybackPlayingData,
@@ -9,13 +8,20 @@ import {
     PlaybackStoppedData,
     PlaybackTimeChangeData,
 } from "./types/cider";
-import { CIDER_API_URL, CIDER_SOCKET_URL, Config } from "./config";
 import {
     ParrotAlbum,
     ParrotAlbumArt,
     ParrotStateData,
     ParrotTrackData,
 } from "./types/parrot";
+
+const configPath = Bun.file("./config.json");
+const Config = await configPath.json();
+
+console.log("Config loaded!");
+
+export const CIDER_SOCKET_URL = `${Config.ciderURL}:${Config.ciderPort}`;
+export const CIDER_API_URL = `${Config.ciderURL}:${Config.ciderPort}/api/v1/playback/now-playing`;
 
 class SocketDataHandler {
     trackData: ParrotTrackData | null;
@@ -115,8 +121,8 @@ class SocketDataHandler {
 const socketData = new SocketDataHandler();
 
 const parrotSocket = new WebSocketServer({
-    host: Config.parrot_url,
-    port: Config.parrot_port,
+    host: Config.parrotURL,
+    port: Config.parrotPort,
 });
 const socketClients: any[] = [];
 
@@ -144,7 +150,7 @@ ciderSocket.on("connect", async () => {
 
     const songPlayingOnConnection = await fetch(CIDER_API_URL, {
         method: "GET",
-        headers: { apptoken: Config.cider_app_token },
+        headers: { apptoken: Config.ciderAppToken },
     });
 
     if (songPlayingOnConnection.ok) {

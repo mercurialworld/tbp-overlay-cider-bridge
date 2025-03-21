@@ -1,0 +1,8 @@
+{
+    "ciderURL": "http://127.0.0.1",
+    "ciderPort": 10767,
+    "ciderAppToken": "Grab this from Cider's settings",
+
+    "parrotURL": "127.0.0.1",
+    "parrotPort": 8989
+}
