@@ -1,0 +1,44 @@
+name: Create releases
+
+on:
+  push:
+    branches: '*'
+  pull_request:
+    branches: '*'
+  workflow_call:
+
+jobs:
+  bun-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🅱️heckout
+        uses: actions/checkout@v4
+
+      - name: Set up 🅱️un
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: 🅱️uild
+        run: bun run build
+
+      - name: 🅱️opy 🅱️onfigs 
+        run: |
+          cp config.sample.json out/linux-x64/config.json
+          cp config.sample.json out/windows-x64/config.json
+      
+      - name: 🅱️ompress 🅱️uilds
+        run: |
+          mkdir -p dist
+          tar -C out/linux-x64 -czvf dist/linux-x64.tar.gz .
+          zip -r -j dist/windows-x64.zip out/windows-x64/*
+      
+      - name: 🅱️pload 🅱️rtifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist
+

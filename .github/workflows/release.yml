@@ -1,0 +1,22 @@
+name: Upload releases
+
+on:
+  push:
+    tags: 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch: 
+
+jobs:
+  bun-build:
+    uses: ./.github/workflows.build.yml
+    secrets: inherit
+  
+  
+  upload-releases:
+    needs:
+      - bun-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🅱️ownload 🅱️rtifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build
