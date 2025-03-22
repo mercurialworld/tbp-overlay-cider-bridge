@@ -1,4 +1,4 @@
-name: Upload releases
+name: Release
 
 on:
   push:
@@ -7,11 +7,12 @@ on:
 
 jobs:
   bun-build:
-    uses: ./.github/workflows.build.yml
+    uses: ./.github/workflows/build.yml
     secrets: inherit
   
-  
   upload-releases:
+    permissions:
+      contents: write
     needs:
       - bun-build
     runs-on: ubuntu-latest
@@ -20,3 +21,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
+          path: dist
+      
+      - name: 🅱️elease
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
