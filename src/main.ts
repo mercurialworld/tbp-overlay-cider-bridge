@@ -14,6 +14,8 @@ import {
     ParrotStateData,
     ParrotTrackData,
 } from "./types/parrot";
+import { Artwork } from "./types/applemusic";
+import { platform } from "os";
 
 class SocketDataHandler {
     trackData: ParrotTrackData | null;
@@ -26,8 +28,15 @@ class SocketDataHandler {
         this.isPlaying = false;
     }
 
-    async getAlbumArtRaw(imageUrl: string): Promise<ParrotAlbumArt> {
-        console.log("Obtained image");
+    async getAlbumArtRaw(imageData: Artwork): Promise<ParrotAlbumArt> {
+        console.log(imageData.url);
+
+        var imageUrl = imageData.url.replace(
+            "{w}x{h}",
+            `${imageData.width}x${imageData.height}`,
+        );
+
+        console.log(`Obtained image from URL ${imageUrl}`);
 
         // requires bun
         const res = await fetch(imageUrl, { method: "GET" })
@@ -59,7 +68,7 @@ class SocketDataHandler {
 
         var image;
         if ("artwork" in data && data.artwork.url) {
-            image = await this.getAlbumArtRaw(data.artwork.url);
+            image = await this.getAlbumArtRaw(data.artwork);
         }
         var albumData: ParrotAlbum = {
             name: data.albumName,
