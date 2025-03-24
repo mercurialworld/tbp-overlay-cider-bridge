@@ -15,7 +15,7 @@ import {
     ParrotTrackData,
 } from "./types/parrot";
 import { Artwork } from "./types/applemusic";
-import { platform } from "os";
+import { logProgram, logOverlay, logPlayerSocket, logSongData } from "./logger";
 
 class SocketDataHandler {
     trackData: ParrotTrackData | null;
@@ -29,14 +29,10 @@ class SocketDataHandler {
     }
 
     async getAlbumArtRaw(imageData: Artwork): Promise<ParrotAlbumArt> {
-        console.log(imageData.url);
-
         var imageUrl = imageData.url.replace(
             "{w}x{h}",
             `${imageData.width}x${imageData.height}`,
         );
-
-        console.log(`Obtained image from URL ${imageUrl}`);
 
         // requires bun
         const res = await fetch(imageUrl, { method: "GET" })
@@ -62,7 +58,7 @@ class SocketDataHandler {
             data.name === this.trackData?.title &&
             data.artistName === this.trackData.artists[0]
         ) {
-            console.log("The song metadata hasn't changed, returning");
+            logSongData("The song metadata hasn't changed, returning");
             return;
         }
 
@@ -134,18 +130,18 @@ class OverlayWS {
         this.socketClients = [];
 
         this.parrotServer.on("connection", async (socket, _) => {
-            console.log("Connected to TheBlackParrot's overlay suite!");
+            logOverlay("Connected to TheBlackParrot's overlay suite!");
             this.socketClients.push(socket);
 
             if (socketData.trackData !== null) {
-                console.log(
-                    `Sending song ${socketData.trackData.title} via overlay connection`,
+                logOverlay(
+                    `Sending ${socketData.trackData.artists} - ${socketData.trackData.title} via overlay connection`,
                 );
                 socket.send(socketData.sendTrackData());
             }
 
             socket.on("close", () => {
-                console.log("Overlay disconnected");
+                logOverlay("Overlay disconnected");
                 this.socketClients.splice(this.socketClients.indexOf(socket), 1);
             });
         });
@@ -169,7 +165,7 @@ class CiderSocket {
         this.socketData = socketData;
 
         this.ciderSocket.on("connect", async () => {
-            console.log("Connected to Cider!");
+            logPlayerSocket("Connected to Cider!");
 
             const songPlayingOnConnection = await fetch(apiURL, {
                 method: "GET",
@@ -180,8 +176,8 @@ class CiderSocket {
                 var txt = await songPlayingOnConnection.text();
                 const theSong: CiderAPIResponse = JSON.parse(txt);
 
-                console.log(
-                    `Setting song to ${theSong.info.name} via Cider connection`,
+                logSongData(
+                    `Setting song to ${theSong.info.artistName} - ${theSong.info.name} (${theSong.info.releaseDate}) via Cider connection`,
                 );
                 await socketData.updateTrackData(theSong.info);
                 this.sendToSockets(this.socketData.sendTrackData());
@@ -192,7 +188,7 @@ class CiderSocket {
             switch (res.type) {
                 // new song
                 case "playbackStatus.nowPlayingItemDidChange":
-                    console.log(
+                    logSongData(
                         `Playing ${res.data.name} by ${res.data.artistName} on ${res.data.albumName} (${res.data.releaseDate})`,
                     );
 
@@ -203,7 +199,7 @@ class CiderSocket {
 
                 // playing/paused
                 case "playbackStatus.playbackStateDidChange":
-                    console.log(`Playback state is ${res.data.state}`);
+                    logPlayerSocket(`Playback state is ${res.data.state}`);
 
                     this.socketData.updateStateData(res.data);
                     this.sendToSockets(this.socketData.sendStateData());
@@ -217,7 +213,7 @@ class CiderSocket {
                     break;
                 // literally anything else
                 default:
-                    console.log(`State is ${res.type}, ignoring`);
+                    logPlayerSocket(`State is ${res.type}, ignoring`);
                     break;
             }
         });
@@ -231,10 +227,11 @@ class CiderSocket {
 }
 
 async function main() {
+    logProgram("v0.1.3"); // i'll unhardcode this later
     const configPath = Bun.file("./config.json");
     const Config = await configPath.json();
 
-    console.log("Config loaded!");
+    logProgram("Config loaded!");
     const CIDER_SOCKET_URL = `${Config.ciderURL}:${Config.ciderPort}`;
     const CIDER_API_URL = `${Config.ciderURL}:${Config.ciderPort}/api/v1/playback/now-playing`;
 
