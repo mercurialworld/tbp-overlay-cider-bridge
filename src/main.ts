@@ -176,12 +176,16 @@ class CiderSocket {
                 var txt = await songPlayingOnConnection.text();
                 const theSong: CiderAPIResponse = JSON.parse(txt);
 
-                logSongData(
-                    `Setting song to ${theSong.info.artistName} - ${theSong.info.name} (${theSong.info.releaseDate}) via Cider connection`,
-                );
-                await socketData.updateTrackData(theSong.info);
-                this.sendToSockets(this.socketData.sendTrackData());
-            }
+                if (typeof theSong.info.name !== "undefined") {
+                    logSongData(
+                        `Setting song to ${theSong.info.artistName} - ${theSong.info.name} (${theSong.info.releaseDate}) via Cider connection`,
+                    );
+                    await socketData.updateTrackData(theSong.info);
+                    this.sendToSockets(this.socketData.sendTrackData());
+                } else {
+                    logSongData("No song currently playing");
+                }
+            } 
         });
 
         this.ciderSocket.on("API:Playback", async (res: CiderPlaybackStatus) => {
@@ -213,7 +217,7 @@ class CiderSocket {
                     break;
                 // literally anything else
                 default:
-                    logPlayerSocket(`State is ${res.type}, ignoring`);
+                    // logPlayerSocket(`State is ${res.type}, ignoring`);
                     break;
             }
         });
@@ -227,7 +231,7 @@ class CiderSocket {
 }
 
 async function main() {
-    logProgram("v0.1.3"); // i'll unhardcode this later
+    logProgram("v0.1.4"); // i'll unhardcode this later
     const configPath = Bun.file("./config.json");
     const Config = await configPath.json();
 
