@@ -19,6 +19,7 @@
     "base-build": "bun build --compile --minify --sourcemap ./src/main.ts",
     "build:windows": "bun run base-build --target=bun-windows-x64 --outfile=out/windows-x64/tbpciderbridge",
     "build:linux": "bun run base-build --target=bun-linux-x64 --outfile=out/linux-x64/tbpciderbridge",
-    "build": "npm-run-all build:*"
+    "build": "npm-run-all build:*",
+    "dev": "bun run src/main.ts"
   }
 }
