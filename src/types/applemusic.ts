@@ -41,6 +41,8 @@ export interface EditorialNotes {
 export interface PlayParameters {
     id: string;
     kind: string;
+    catalogId?: string;
+    reportingId?: string;
 }
 
 /**

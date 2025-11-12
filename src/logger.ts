@@ -38,9 +38,9 @@ export function logSongData(message: string) {
     );
 }
 
-export function logOverlay(message: string) {
+export function logWSClient(message: string) {
     console.log(
-        `${`[${currentDate()} OVERLAY]`.colorFormat(TerminalColor.Magenta)}\t${message}`,
+        `${`[${currentDate()} WEBSOCKET]`.colorFormat(TerminalColor.Magenta)}\t${message}`,
     );
 }
 
