@@ -15,7 +15,8 @@ import {
     ParrotTrackData,
 } from "./types/parrot";
 import { Artwork } from "./types/applemusic";
-import { logProgram, logOverlay, logPlayerSocket, logSongData } from "./logger";
+import { logProgram, logWSClient, logPlayerSocket, logSongData, logDebug } from "./logger";
+import { randomUUIDv7 } from "bun";
 
 class SocketDataHandler {
     trackData: ParrotTrackData | null;
@@ -29,7 +30,7 @@ class SocketDataHandler {
     }
 
     async getAlbumArtRaw(imageData: Artwork): Promise<ParrotAlbumArt> {
-        var imageUrl = imageData.url.replace(
+        let imageUrl = imageData.url.replace(
             "{w}x{h}",
             `${imageData.width}x${imageData.height}`,
         );
@@ -49,7 +50,7 @@ class SocketDataHandler {
     }
 
     processYear(date: string): number {
-        var theDate = new Date(date);
+        let theDate = new Date(date);
         return theDate.getFullYear();
     }
 
@@ -62,11 +63,11 @@ class SocketDataHandler {
             return;
         }
 
-        var image;
+        let image;
         if ("artwork" in data && data.artwork.url) {
             image = await this.getAlbumArtRaw(data.artwork);
         }
-        var albumData: ParrotAlbum = {
+        let albumData: ParrotAlbum = {
             name: data.albumName,
             year: null,
         };
@@ -79,18 +80,19 @@ class SocketDataHandler {
         }
 
         this.trackData = {
-            id: data.playParams.id,
+            id: data.playParams.id ?? randomUUIDv7(),
             title: data.name,
             artists: [data.artistName],
             duration: data.durationInMillis,
             album: albumData,
             art: image,
             isrc: data.isrc ? data.isrc.substring(data.isrc.length - 12) : null,
+            url: data.playParams.catalogId ? `https://song.link/ca/i/${data.playParams.catalogId}` : null,
         };
     }
 
     updateStateData(data: PlaybackPlayingData | PlaybackStoppedData) {
-        var playbackTime = data.attributes?.currentPlaybackTime | 0;
+        let playbackTime = data.attributes?.currentPlaybackTime | 0;
         this.isPlaying =
             data.state === "paused" || data.state === "stopped" ? false : true;
 
@@ -116,7 +118,7 @@ class SocketDataHandler {
     }
 }
 
-class OverlayWS {
+class WSServer {
     parrotServer: WebSocketServer | null;
     socketData: SocketDataHandler;
     socketClients: any[];
@@ -130,18 +132,18 @@ class OverlayWS {
         this.socketClients = [];
 
         this.parrotServer.on("connection", async (socket, _) => {
-            logOverlay("Connected to TheBlackParrot's overlay suite!");
+            logWSClient("Websocket client connected!");
             this.socketClients.push(socket);
 
             if (socketData.trackData !== null) {
-                logOverlay(
-                    `Sending ${socketData.trackData.artists} - ${socketData.trackData.title} via overlay connection`,
+                logWSClient(
+                    `Sending ${socketData.trackData.artists} - ${socketData.trackData.title} via websocket connection`,
                 );
                 socket.send(socketData.sendTrackData());
             }
 
             socket.on("close", () => {
-                logOverlay("Overlay disconnected");
+                logWSClient("Websocket client disconnected");
                 this.socketClients.splice(this.socketClients.indexOf(socket), 1);
             });
         });
@@ -150,18 +152,18 @@ class OverlayWS {
 
 class CiderSocket {
     ciderSocket: Socket | null;
-    overlayWS: OverlayWS;
+    serverWS: WSServer;
     socketData: SocketDataHandler;
 
     constructor(
         socketURL: string,
         apiURL: string,
         appToken: string,
-        overlayWS: OverlayWS,
+        serverWS: WSServer,
         socketData: SocketDataHandler,
     ) {
         this.ciderSocket = io(socketURL);
-        this.overlayWS = overlayWS;
+        this.serverWS = serverWS;
         this.socketData = socketData;
 
         this.ciderSocket.on("connect", async () => {
@@ -173,7 +175,7 @@ class CiderSocket {
             });
 
             if (songPlayingOnConnection.ok) {
-                var txt = await songPlayingOnConnection.text();
+                let txt = await songPlayingOnConnection.text();
                 const theSong: CiderAPIResponse = JSON.parse(txt);
 
                 if (typeof theSong.info.name !== "undefined") {
@@ -224,7 +226,7 @@ class CiderSocket {
     }
 
     sendToSockets(data: string) {
-        this.overlayWS.socketClients.forEach((socket) => {
+        this.serverWS.socketClients.forEach((socket) => {
             socket.send(data);
         });
     }
@@ -240,7 +242,7 @@ async function main() {
     const CIDER_API_URL = `${Config.ciderURL}:${Config.ciderPort}/api/v1/playback/now-playing`;
 
     const socketData = new SocketDataHandler();
-    const parrotSocketServer = new OverlayWS(
+    const parrotSocketServer = new WSServer(
         Config.parrotURL,
         Config.parrotPort,
         socketData,

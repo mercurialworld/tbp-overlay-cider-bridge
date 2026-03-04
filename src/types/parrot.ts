@@ -18,6 +18,7 @@ export interface ParrotTrackData {
     title: string;
     artists: string[];
     duration: number; // millis
+    url: string | null;
     album?: ParrotAlbum | null;
     art?: ParrotAlbumArt | null;
     isrc?: string | null;
