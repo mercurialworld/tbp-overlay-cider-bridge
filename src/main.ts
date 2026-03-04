@@ -80,7 +80,7 @@ class SocketDataHandler {
         }
 
         this.trackData = {
-            id: data.playParams.catalogId ?? data.playParams.id ?? randomUUIDv7(),
+            id: data.playParams.id ?? randomUUIDv7(),
             title: data.name,
             artists: [data.artistName],
             duration: data.durationInMillis,
