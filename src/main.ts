@@ -233,7 +233,7 @@ class CiderSocket {
 }
 
 async function main() {
-    logProgram("v0.1.4"); // i'll unhardcode this later
+    logProgram("v0.1.5"); // i'll unhardcode this later
     const configPath = Bun.file("./config.json");
     const Config = await configPath.json();
 
