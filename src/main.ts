@@ -87,7 +87,7 @@ class SocketDataHandler {
             album: albumData,
             art: image,
             isrc: data.isrc ? data.isrc.substring(data.isrc.length - 12) : null,
-            url: data.playParams.catalogId ? `https://song.link/ca/i/${data.playParams.catalogId}` : null,
+            url: data.playParams.catalogId ? `https://song.link/i/${data.playParams.catalogId}` : null,
         };
     }
 
